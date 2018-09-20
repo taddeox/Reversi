@@ -66,7 +66,12 @@ class AIGuy {
     private int move() {
         // just move randomly for now
 
-        int myMove = generator.nextInt(numValidMoves);
+        int myMove = minimax(-1, 6, Integer.MIN_VALUE, Integer.MAX_VALUE, true, validMoves, state, me, round).getKey();
+
+        for(int i = 0; i < validMoves.length; i++){
+            if(myMove == validMoves[i])
+                return i;
+        }
 
         return myMove;
     }
@@ -91,35 +96,79 @@ class AIGuy {
     //                 break (* α cut-off *)
     //         return value
 
-//    private Pair<Integer,Integer> minimax(int move, int depth, int alpha, int beta, boolean isMaxPlayer, int[] currentMoves) {
-//        if(depth == 0 || isTerminal()){
-//            return heuristic(move);
-//        }
-//        if(isMaxPlayer){
-//            int value = Integer.MAX_VALUE;
-//
-//            for(int i = 0; i < currentMoves.length; i++){
-//
-//                //value = Math.max(value,minimax(currentMoves[i],depth-1,alpha,beta,false,));
-//            }
-//
-//        }
-//        // Go through list of possible moves
-//        // calculate maximum cost of each
-//        // find minimum of maximum expected cost
-//        // return move
-//    }
-//
+    private Pair<Integer,Integer> minimax(int move, int depth, int alpha, int beta, boolean isMaxPlayer, int[] currentMoves, int currentState[][], int playerNumber, int round) {
+        int currentNumValidMoves = numValidMoves;
+
+        if(depth == 0 || isTerminal(numValidMoves)){
+            return new Pair<>(move, heuristic(currentState, playerNumber, round));
+        }
+        if(isMaxPlayer){
+            int value = Integer.MIN_VALUE;
+
+            for(int i = 0; i < currentNumValidMoves; i++){
+                int nextState[][] = makeMove(currentMoves[i], currentState, playerNumber);
+                int[] nextMoves = getValidMoves(round + 1, nextState);
+
+                int temp = value;
+                value = Math.max(value,minimax(currentMoves[i],depth-1,alpha,beta,false, nextMoves, nextState, otherPlayer(playerNumber), round+1).getValue());
+                if(value != temp)
+                    move = currentMoves[i];
+
+                alpha = Math.max(alpha, value);
+                if(alpha >= beta)
+                    break;
+            }
+            return new Pair<>(move, value);
+        }
+        else{
+            int value = Integer.MAX_VALUE;
+
+            for(int i = 0; i < currentNumValidMoves; i++){
+                int nextState[][] = makeMove(currentMoves[i], currentState, playerNumber);
+                int[] nextMoves = getValidMoves(round + 1, nextState);
+
+                int temp = value;
+                value = Math.min(value, minimax(currentMoves[i], depth-1, alpha, beta, true, nextMoves, nextState, otherPlayer(playerNumber), round+1).getValue());
+                if(value != temp)
+                    move = currentMoves[i];
+
+                beta = Math.min(beta, value);
+                if(alpha >= beta)
+                    break;
+            }
+            return new Pair<>(move, value);
+        }
+    }
+
+    private int[][] makeMove(int move, int[][]currentState, int playerNumber){
+        int[][] newState = new int[8][8];
+        for(int i = 0; i < 8; i++){
+            for(int j = 0; j < 8; j++){
+                newState[i][j] = currentState[i][j];
+            }
+        }
+
+        newState[move/8][move%8] = playerNumber;
+        return newState;
+    }
+
+    private int otherPlayer(int playerNumber){
+        if(playerNumber == 1)
+            return 2;
+        else
+            return 1;
+    }
+
    private int heuristic(int state[][],int playerNumber, int round) {
         int temp = me;
         me = playerNumber;
-        int[] possibleMoves = getValidMoves(round, state);
+        getValidMoves(round, state);
         me = temp;
-        return possibleMoves.length;
+        return numValidMoves;
    }
 
-   private boolean isTerminal(int[] currentMoves){
-       return currentMoves.length == 0;
+   private boolean isTerminal(int currentNumValidMoves){
+       return currentNumValidMoves == 0;
    }
 
     // generates the set of valid moves for the player; returns a list of valid moves (validMoves)
