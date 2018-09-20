@@ -27,6 +27,17 @@ class AIGuy {
     int validMoves[] = new int[64];
     int numValidMoves;
 
+    int[][] boardValues = new int[][]{
+            { 10, 2, 9, 5, 5, 9, 2, 10 },
+            { 2, 1, 9, 3, 3, 9, 1, 2 },
+            { 9, 9, 9, 3, 3, 9, 9, 9 },
+            { 5, 3, 3, 3, 3, 3, 3, 5 },
+            { 5, 3, 3, 3, 3, 3, 3, 5 },
+            { 9, 9, 9, 3, 3, 9, 9, 9 },
+            { 2, 1, 9, 3, 3, 9, 1, 2 },
+            { 10, 2, 9, 5, 5, 9, 2, 10 },
+    };
+
 
     // main function that (1) establishes a connection with the server, and then plays whenever it is this player's turn
     public AIGuy(int _me, String host) {
@@ -36,11 +47,11 @@ class AIGuy {
         int myMove;
 
         while (true) {
-            System.out.println("Read");
+            //System.out.println("Read");
             readMessage();
 
             if (turn == me) {
-                System.out.println("Move");
+                //System.out.println("Move");
                 validMoves = getValidMoves(round, state);
 
                 myMove = move();
@@ -48,7 +59,7 @@ class AIGuy {
 
                 String sel = validMoves[myMove] / 8 + "\n" + validMoves[myMove] % 8;
 
-                System.out.println("Selection: " + validMoves[myMove] / 8 + ", " + validMoves[myMove] % 8);
+                //System.out.println("Selection: " + validMoves[myMove] / 8 + ", " + validMoves[myMove] % 8);
 
                 sout.println(sel);
             }
@@ -66,7 +77,7 @@ class AIGuy {
     private int move() {
         // just move randomly for now
 
-        int myMove = minimax(-1, 6, Integer.MIN_VALUE, Integer.MAX_VALUE, true, validMoves, state, me, round).getKey();
+        int myMove = minimax(-1, 12, Integer.MIN_VALUE, Integer.MAX_VALUE, true, validMoves, state, me, round).getKey();
 
         for(int i = 0; i < validMoves.length; i++){
             if(myMove == validMoves[i])
@@ -100,7 +111,7 @@ class AIGuy {
         int currentNumValidMoves = numValidMoves;
 
         if(depth == 0 || isTerminal(numValidMoves)){
-            return new Pair<>(move, heuristic(currentState, playerNumber, round));
+            return new Pair<>(move, heuristic(move, isMaxPlayer));
         }
         if(isMaxPlayer){
             int value = Integer.MIN_VALUE;
@@ -110,7 +121,8 @@ class AIGuy {
                 int[] nextMoves = getValidMoves(round + 1, nextState);
 
                 int temp = value;
-                value = Math.max(value,minimax(currentMoves[i],depth-1,alpha,beta,false, nextMoves, nextState, otherPlayer(playerNumber), round+1).getValue());
+                int currentValue = heuristic(currentMoves[i], isMaxPlayer);
+                value = Math.max(Math.max(value, currentValue), minimax(currentMoves[i],depth-1,alpha,beta,false, nextMoves, nextState, otherPlayer(playerNumber), round+1).getValue());
                 if(value != temp)
                     move = currentMoves[i];
 
@@ -128,7 +140,8 @@ class AIGuy {
                 int[] nextMoves = getValidMoves(round + 1, nextState);
 
                 int temp = value;
-                value = Math.min(value, minimax(currentMoves[i], depth-1, alpha, beta, true, nextMoves, nextState, otherPlayer(playerNumber), round+1).getValue());
+                int currentValue = heuristic(currentMoves[i], isMaxPlayer);
+                value = Math.min(Math.min(value, currentValue), minimax(currentMoves[i], depth-1, alpha, beta, true, nextMoves, nextState, otherPlayer(playerNumber), round+1).getValue());
                 if(value != temp)
                     move = currentMoves[i];
 
@@ -149,6 +162,7 @@ class AIGuy {
         }
 
         newState[move/8][move%8] = playerNumber;
+        changeColors(move/8, move%8, playerNumber-1, newState);
         return newState;
     }
 
@@ -159,17 +173,98 @@ class AIGuy {
             return 1;
     }
 
-   private int heuristic(int state[][],int playerNumber, int round) {
-        int temp = me;
-        me = playerNumber;
-        getValidMoves(round, state);
-        me = temp;
-        return numValidMoves;
+   private int heuristic(int move, boolean isMaxPlayer) {
+        if(move == -1)
+            return 0;
+
+        if(isMaxPlayer)
+            return boardValues[move/8][move%8];
+        else
+            return boardValues[move/8][move%8] * (-1);
    }
 
    private boolean isTerminal(int currentNumValidMoves){
        return currentNumValidMoves == 0;
    }
+
+
+    public static void checkDirection(int row, int col, int incx, int incy, int turn, int[][] state) {
+        int sequence[] = new int[7];
+        int seqLen;
+        int i, r, c;
+
+        seqLen = 0;
+        for (i = 1; i < 8; i++) {
+            r = row+incy*i;
+            c = col+incx*i;
+
+            if ((r < 0) || (r > 7) || (c < 0) || (c > 7))
+                break;
+
+            sequence[seqLen] = state[r][c];
+            seqLen++;
+        }
+
+        int count = 0;
+        for (i = 0; i < seqLen; i++) {
+            if (turn == 0) {
+                if (sequence[i] == 2)
+                    count ++;
+                else {
+                    if ((sequence[i] == 1) && (count > 0))
+                        count = 20;
+                    break;
+                }
+            }
+            else {
+                if (sequence[i] == 1)
+                    count ++;
+                else {
+                    if ((sequence[i] == 2) && (count > 0))
+                        count = 20;
+                    break;
+                }
+            }
+        }
+
+        if (count > 10) {
+            if (turn == 0) {
+                i = 1;
+                r = row+incy*i;
+                c = col+incx*i;
+                while (state[r][c] == 2) {
+                    state[r][c] = 1;
+                    i++;
+                    r = row+incy*i;
+                    c = col+incx*i;
+                }
+            }
+            else {
+                i = 1;
+                r = row+incy*i;
+                c = col+incx*i;
+                while (state[r][c] == 1) {
+                    state[r][c] = 2;
+                    i++;
+                    r = row+incy*i;
+                    c = col+incx*i;
+                }
+            }
+        }
+    }
+
+    public static void changeColors(int row, int col, int turn, int[][] state) {
+        int incx, incy;
+
+        for (incx = -1; incx < 2; incx++) {
+            for (incy = -1; incy < 2; incy++) {
+                if ((incx == 0) && (incy == 0))
+                    continue;
+
+                checkDirection(row, col, incx, incy, turn, state);
+            }
+        }
+    }
 
     // generates the set of valid moves for the player; returns a list of valid moves (validMoves)
     private int[] getValidMoves(int round, int state[][]) {
@@ -195,20 +290,20 @@ class AIGuy {
                 validMoves[numValidMoves] = 4*8 + 4;
                 numValidMoves ++;
             }
-            System.out.println("Valid Moves:");
-            for (i = 0; i < numValidMoves; i++) {
-                System.out.println(validMoves[i] / 8 + ", " + validMoves[i] % 8);
-            }
+            //System.out.println("Valid Moves:");
+            //for (i = 0; i < numValidMoves; i++) {
+            //    System.out.println(validMoves[i] / 8 + ", " + validMoves[i] % 8);
+            //}
         }
         else {
-            System.out.println("Valid Moves:");
+            //System.out.println("Valid Moves:");
             for (i = 0; i < 8; i++) {
                 for (j = 0; j < 8; j++) {
                     if (state[i][j] == 0) {
                         if (couldBe(state, i, j)) {
                             validMoves[numValidMoves] = i*8 + j;
                             numValidMoves ++;
-                            System.out.println(i + ", " + j);
+                            //System.out.println(i + ", " + j);
                         }
                     }
                 }
@@ -301,9 +396,9 @@ class AIGuy {
             //System.out.println("Turn: " + turn);
             round = Integer.parseInt(sin.readLine());
             t1 = Double.parseDouble(sin.readLine());
-            System.out.println(t1);
+            //System.out.println(t1);
             t2 = Double.parseDouble(sin.readLine());
-            System.out.println(t2);
+            //System.out.println(t2);
             for (i = 0; i < 8; i++) {
                 for (j = 0; j < 8; j++) {
                     state[i][j] = Integer.parseInt(sin.readLine());
@@ -314,15 +409,15 @@ class AIGuy {
             System.err.println("Caught IOException: " + e.getMessage());
         }
 
-        System.out.println("Turn: " + turn);
-        System.out.println("Round: " + round);
-        for (i = 7; i >= 0; i--) {
-            for (j = 0; j < 8; j++) {
-                System.out.print(state[i][j]);
-            }
-            System.out.println();
-        }
-        System.out.println();
+//        System.out.println("Turn: " + turn);
+//        System.out.println("Round: " + round);
+//        for (i = 7; i >= 0; i--) {
+//            for (j = 0; j < 8; j++) {
+//                System.out.print(state[i][j]);
+//            }
+//            System.out.println();
+//        }
+//        System.out.println();
     }
 
     public void initClient(String host) {
