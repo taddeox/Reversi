@@ -41,7 +41,7 @@ class AIGuy {
 
             if (turn == me) {
                 System.out.println("Move");
-                getValidMoves(round, state);
+                validMoves = getValidMoves(round, state);
 
                 myMove = move();
                 //myMove = generator.nextInt(numValidMoves);        // select a move randomly
@@ -110,17 +110,23 @@ class AIGuy {
 //        // return move
 //    }
 //
-//    private int heuristic(int x, int y) {
-//        return 0;
-//    }
-//
-//    private boolean isTerminal(int move){
-//        return false;
-//    }
+   private int heuristic(int state[][],int playerNumber, int round) {
+        int temp = me;
+        me = playerNumber;
+        int[] possibleMoves = getValidMoves(round, state);
+        me = temp;
+        return possibleMoves.length;
+   }
+
+   private boolean isTerminal(int[] currentMoves){
+       return currentMoves.length == 0;
+   }
 
     // generates the set of valid moves for the player; returns a list of valid moves (validMoves)
-    private void getValidMoves(int round, int state[][]) {
+    private int[] getValidMoves(int round, int state[][]) {
         int i, j;
+        int validMoves[] = new int[64];
+
 
         numValidMoves = 0;
         if (round < 4) {
@@ -160,6 +166,7 @@ class AIGuy {
             }
         }
 
+        return validMoves;
 
         //if (round > 3) {
         //    System.out.println("checking out");
