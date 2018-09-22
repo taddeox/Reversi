@@ -75,7 +75,30 @@ class AIGuy {
     // validMoves is a list of valid locations that you could place your "stone" on this turn
     // Note that "state" is a global variable 2D list that shows the state of the game
     private int move() {
-        // just move randomly for now
+        if(state[0][0] != 0)
+        {
+            boardValues[0][1] = 5;
+            boardValues[1][1] = 5;
+            boardValues[1][0] = 5;
+        }
+        if(state[0][7] != 0)
+        {
+            boardValues[0][6] = 5;
+            boardValues[1][6] = 5;
+            boardValues[1][7] = 5;
+        }
+        if(state[7][0] != 0)
+        {
+            boardValues[6][0] = 5;
+            boardValues[6][1] = 5;
+            boardValues[7][1] = 5;
+        }
+        if(state[7][7] != 0)
+        {
+            boardValues[6][7] = 5;
+            boardValues[6][6] = 5;
+            boardValues[7][6] = 5;
+        }
 
         int myMove = minimax(-1, 12, Integer.MIN_VALUE, Integer.MAX_VALUE, true, validMoves, state, me, round).getKey();
 
@@ -111,7 +134,7 @@ class AIGuy {
         int currentNumValidMoves = numValidMoves;
 
         if(depth == 0 || isTerminal(numValidMoves)){
-            return new Pair<>(move, heuristic(move, isMaxPlayer));
+            return new Pair<>(move, heuristic(move, isMaxPlayer, currentNumValidMoves, currentState));
         }
         if(isMaxPlayer){
             int value = Integer.MIN_VALUE;
@@ -121,7 +144,7 @@ class AIGuy {
                 int[] nextMoves = getValidMoves(round + 1, nextState);
 
                 int temp = value;
-                int currentValue = heuristic(currentMoves[i], isMaxPlayer);
+                int currentValue = heuristic(currentMoves[i], isMaxPlayer, currentNumValidMoves, currentState);
                 value = Math.max(Math.max(value, currentValue), minimax(currentMoves[i],depth-1,alpha,beta,false, nextMoves, nextState, otherPlayer(playerNumber), round+1).getValue());
                 if(value != temp)
                     move = currentMoves[i];
@@ -140,7 +163,7 @@ class AIGuy {
                 int[] nextMoves = getValidMoves(round + 1, nextState);
 
                 int temp = value;
-                int currentValue = heuristic(currentMoves[i], isMaxPlayer);
+                int currentValue = heuristic(currentMoves[i], isMaxPlayer, currentNumValidMoves, currentState);
                 value = Math.min(Math.min(value, currentValue), minimax(currentMoves[i], depth-1, alpha, beta, true, nextMoves, nextState, otherPlayer(playerNumber), round+1).getValue());
                 if(value != temp)
                     move = currentMoves[i];
@@ -173,14 +196,38 @@ class AIGuy {
             return 1;
     }
 
-   private int heuristic(int move, boolean isMaxPlayer) {
+   private int heuristic(int move, boolean isMaxPlayer, int numValidMoves, int[][] state) {
         if(move == -1)
             return 0;
+
+        if(numValidMoves == 0){
+            boolean player1wins = isPlayer1Winning(state);
+            if((player1wins && me == 1) || (!player1wins && me == 2))
+                return 20;
+            else
+                return -20;
+        }
 
         if(isMaxPlayer)
             return boardValues[move/8][move%8];
         else
             return boardValues[move/8][move%8] * (-1);
+   }
+
+   private boolean isPlayer1Winning(int [][]state){
+        int count1 = 0;
+        int count2 = 0;
+
+        for(int i = 0; i < 8; i++){
+            for(int j = 0; j < 8; j++){
+                if(state[i][j] == 1)
+                    count1++;
+                else if(state[i][j] == 2)
+                    count2++;
+            }
+        }
+
+        return count1 > count2;
    }
 
    private boolean isTerminal(int currentNumValidMoves){
