@@ -200,6 +200,8 @@ class AIGuy {
         if(move == -1)
             return 0;
 
+        
+
         if(numValidMoves == 0){
             boolean player1wins = isPlayer1Winning(state);
             if((player1wins && me == 1) || (!player1wins && me == 2))
