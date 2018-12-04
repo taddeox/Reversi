@@ -28,14 +28,14 @@ class AIGuy {
     int numValidMoves;
 
     int[][] boardValues = new int[][]{
-            { 10, 2, 9, 5, 5, 9, 2, 10 },
-            { 2, 1, 9, 3, 3, 9, 1, 2 },
-            { 9, 9, 9, 3, 3, 9, 9, 9 },
-            { 5, 3, 3, 3, 3, 3, 3, 5 },
-            { 5, 3, 3, 3, 3, 3, 3, 5 },
-            { 9, 9, 9, 3, 3, 9, 9, 9 },
-            { 2, 1, 9, 3, 3, 9, 1, 2 },
-            { 10, 2, 9, 5, 5, 9, 2, 10 },
+            { 20, -3, 11, 8, 8, 11, -3, 20 },
+            { -3, -7, -4, 1, 1, -4, -7, -3 },
+            { 11, -4, 2, 2, 2, 2, -4, 11 },
+            { 8, 1, 2, -3, -3, 2, 1, 8 },
+            { 8, 1, 2, -3, -3, 2, 1, 8 },
+            { 11, -4, 2, 2, 2, 2, -4, 11 },
+            { -3, -7, -4, 1, 1, -4, -7, -3 },
+            { 20, -3, 11, 8, 8, 11, -3, 20 },
     };
 
 
@@ -100,7 +100,7 @@ class AIGuy {
             boardValues[7][6] = 5;
         }
 
-        int myMove = minimax(-1, 12, Integer.MIN_VALUE, Integer.MAX_VALUE, true, validMoves, state, me, round).getKey();
+        int myMove = minimax(-1, 9, Integer.MIN_VALUE, Integer.MAX_VALUE, true, validMoves, state, me, round).getKey();
 
         for(int i = 0; i < validMoves.length; i++){
             if(myMove == validMoves[i])
@@ -134,7 +134,7 @@ class AIGuy {
         int currentNumValidMoves = numValidMoves;
 
         if(depth == 0 || isTerminal(numValidMoves)){
-            return new Pair<>(move, heuristic(move, isMaxPlayer, currentNumValidMoves, currentState));
+            return new Pair<>(move, heuristic(move, isMaxPlayer, currentNumValidMoves, currentState, playerNumber));
         }
         if(isMaxPlayer){
             int value = Integer.MIN_VALUE;
@@ -144,7 +144,7 @@ class AIGuy {
                 int[] nextMoves = getValidMoves(round + 1, nextState);
 
                 int temp = value;
-                int currentValue = heuristic(currentMoves[i], isMaxPlayer, currentNumValidMoves, currentState);
+                int currentValue = heuristic(currentMoves[i], isMaxPlayer, currentNumValidMoves, nextState, playerNumber);
                 value = Math.max(Math.max(value, currentValue), minimax(currentMoves[i],depth-1,alpha,beta,false, nextMoves, nextState, otherPlayer(playerNumber), round+1).getValue());
                 if(value != temp)
                     move = currentMoves[i];
@@ -163,7 +163,7 @@ class AIGuy {
                 int[] nextMoves = getValidMoves(round + 1, nextState);
 
                 int temp = value;
-                int currentValue = heuristic(currentMoves[i], isMaxPlayer, currentNumValidMoves, currentState);
+                int currentValue = heuristic(currentMoves[i], isMaxPlayer, currentNumValidMoves, nextState, playerNumber);
                 value = Math.min(Math.min(value, currentValue), minimax(currentMoves[i], depth-1, alpha, beta, true, nextMoves, nextState, otherPlayer(playerNumber), round+1).getValue());
                 if(value != temp)
                     move = currentMoves[i];
@@ -196,27 +196,65 @@ class AIGuy {
             return 1;
     }
 
-   private int heuristic(int move, boolean isMaxPlayer, int numValidMoves, int[][] state) {
+   private int heuristic(int move, boolean isMaxPlayer, int numValidMoves, int[][] state, int playerNumber) {
         if(move == -1)
             return 0;
 
-        
+        int winning = 0;
+        int position = calcPosition(state, playerNumber);
+        int validMoves = numValidMoves;
+        int myTiles = numOfTiles(state, playerNumber);
+        int oppTiles = numOfTiles(state, otherPlayer(playerNumber));
+        int TileDifference = 0;
+        if(myTiles > oppTiles)
+            TileDifference = (100 * myTiles)/(myTiles + oppTiles);
+        else if(myTiles < oppTiles)
+            TileDifference = (-100 * oppTiles)/(myTiles + oppTiles);
+
+//       if(!isMaxPlayer) {
+//           //position *= -1;
+//           //validMoves *= -1;
+//       }
 
         if(numValidMoves == 0){
             boolean player1wins = isPlayer1Winning(state);
-            if((player1wins && me == 1) || (!player1wins && me == 2))
-                return 20;
+            if(player1wins && playerNumber == 1)
+                winning = 1;
             else
-                return -20;
+                winning = -1;
         }
 
-        if(isMaxPlayer)
-            return boardValues[move/8][move%8];
-        else
-            return boardValues[move/8][move%8] * (-1);
+        return winning * 75 + position * 2 + validMoves * 1 + TileDifference * 2;
    }
 
-   private boolean isPlayer1Winning(int [][]state){
+    private int calcPosition(int[][] state, int playerNumber) {
+        int value = 0;
+        for(int i = 0; i < state.length; i++) {
+            for (int j = 0; j < state[i].length; j++) {
+                if(state[i][j] == playerNumber){
+                    value += boardValues[i][j];
+                }
+                else if(state[i][j] == otherPlayer(playerNumber)){
+                    value -= boardValues[i][j];
+                }
+            }
+        }
+        return value;
+    }
+
+    private int numOfTiles(int[][] state, int playerNumber) {
+        int count = 0;
+        for(int i = 0; i < state.length; i++){
+            for(int j = 0; j < state[i].length; j++){
+                if(state[i][j] == playerNumber){
+                    count++;
+                }
+            }
+        }
+        return count;
+    }
+
+    private boolean isPlayer1Winning(int [][]state){
         int count1 = 0;
         int count2 = 0;
 
