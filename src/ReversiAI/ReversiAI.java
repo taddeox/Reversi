@@ -28,15 +28,20 @@ class AIGuy {
     int numValidMoves;
 
     int[][] boardValues = new int[][]{
-            { 50, -9, 9, 8, 8, 9, -9, 50 },
-            { -9, -10, 4, 1, 1, 4, -10, -9 },
-            { 9, 4, 2, 2, 2, 2, 4, 9 },
-            { 8, 1, 2, -3, -3, 2, 1, 8 },
-            { 8, 1, 2, -3, -3, 2, 1, 8 },
-            { 9, 4, 2, 2, 2, 2, 4, 9 },
-            { -9, -10, 4, 1, 1, 4, -10, -9 },
-            { 50, -9, 9, 8, 8, 9, -9, 50 },
+            {20, -3, 11, 8, 8, 11, -3, 20},
+            {-3, -7, -4, 1, 1, -4, -7, -3},
+            {11, -4, 2, 2, 2, 2, -4, 11},
+            {8, 1, 2, -3, -3, 2, 1, 8},
+            {8, 1, 2, -3, -3, 2, 1, 8},
+            {11, -4, 2, 2, 2, 2, -4, 11},
+            {-3, -7, -4, 1, 1, -4, -7, -3},
+            {20, -3, 11, 8, 8, 11, -3, 20},
     };
+
+    long currentTime;// = System.currentTimeMillis();
+    long turnTime;
+    long totalTime = 180000;
+    int totalRounds = 65;
 
 
     // main function that (1) establishes a connection with the server, and then plays whenever it is this player's turn
@@ -71,14 +76,19 @@ class AIGuy {
         //}
     }
 
+    int d = 7;
+    boolean clockMoves = false;
     // You should modify this function
     // validMoves is a list of valid locations that you could place your "stone" on this turn
     // Note that "state" is a global variable 2D list that shows the state of the game
     private int move() {
+        long turnStart = System.currentTimeMillis();
+
         int top = 0;
         int bot = 0;
         int lef = 0;
         int rig = 0;
+        int cornerCount = 0;
 
         if(state[0][0] != 0)
         {
@@ -87,6 +97,7 @@ class AIGuy {
             boardValues[1][0] = 5;
             bot++;
             lef++;
+            cornerCount++;
         }
         if(state[0][7] != 0)
         {
@@ -95,6 +106,7 @@ class AIGuy {
             boardValues[1][7] = 5;
             top++;
             lef++;
+            cornerCount++;
         }
         if(state[7][0] != 0)
         {
@@ -103,6 +115,7 @@ class AIGuy {
             boardValues[7][1] = 5;
             bot++;
             rig++;
+            cornerCount++;
         }
         if(state[7][7] != 0)
         {
@@ -111,17 +124,38 @@ class AIGuy {
             boardValues[7][6] = 5;
             top++;
             rig++;
+            cornerCount++;
         }
-
-        if(top == 2 || bot == 2 || rig == 2 || lef == 2){
-//            System.out.println(round);
+        if(cornerCount >= 2){
             posMult = 1;
+        }
+//        if(top == 2 || bot == 2 || rig == 2 || lef == 2){
+////            System.out.println(round);
+//            posMult = 1;
+//        }
+
+//        if(round >= 39){
+//            d = 10;
+//        }
+//        if(round >= 24){
+//            posMult = 1;
+//        }
+
+        if(round >= 48){
+            d = 20;
         }
 //        if(round < 5){
 //            return generator.nextInt(numValidMoves);
 //        }
+        turnTime = (totalTime/((totalRounds - round)/2));
+//        System.out.println(turnTime);
+//        System.out.println(round);
 
-        int myMove = minimax(-1, 7, Integer.MIN_VALUE, Integer.MAX_VALUE, true, validMoves, state, me, round).getKey();
+        currentTime = System.currentTimeMillis();
+        int myMove = minimax(-1, d, Integer.MIN_VALUE, Integer.MAX_VALUE, true, validMoves, state, me, round).getKey();
+
+        totalTime -= (System.currentTimeMillis() - turnStart);
+//        System.out.println(totalTime);
 
         for(int i = 0; i < validMoves.length; i++){
             if(myMove == validMoves[i])
@@ -268,20 +302,32 @@ class AIGuy {
 
 
 
-        if(numValidMoves == 0){
+       if(numValidMoves == 0){
             boolean player1wins = isPlayer1Winning(state);
             if((player1wins && me == 1) || (!player1wins && me == 2))
                 winning = 1;
             else
                 winning = -1;
-//            System.out.println(player1wins);
-        }
-        return winning * winMult + position * posMult + TileDifference * diffMult + cornerCount * 75 + front * diffMult;
+    //            System.out.println(player1wins);
+       }
+
+       getValidMoves(round, state, otherPlayer(me));
+
+       int mobility = 0;
+       if(numValidMoves > validMoves)
+           mobility = (100 * numValidMoves)/(numValidMoves + validMoves);
+       else if (numValidMoves < validMoves)
+           mobility = (-100 * validMoves)/(playerNumber + validMoves);
+
+       return winning * winMult + position * posMult + TileDifference * diffMult + front * frontMult + mobility * mobilityMult + cornerCount * cornerMult;
    }
 
-    int posMult = 5;
+    int posMult = 2;
     int diffMult = 2;
-    int winMult = 300;
+    int frontMult = 4;
+    int mobilityMult = 4;
+    int cornerMult = 400;
+    int winMult = 1200;
 
     private int CalcRowsAndCols(int[][] state, int me) {
         int count = 0;
@@ -329,6 +375,14 @@ class AIGuy {
             count++;
         if(state[7][7] == playerNumber)
             count++;
+        if(state[0][0] == otherPlayer(playerNumber))
+            count--;
+        if(state[7][0] == otherPlayer(playerNumber))
+            count--;
+        if(state[0][7] == otherPlayer(playerNumber))
+            count--;
+        if(state[7][7] == otherPlayer(playerNumber))
+            count--;
 
         return count;
     }
